@@ -92,7 +92,19 @@ typedef NS_ENUM(NSUInteger, AFHTTPRequestQueryStringSerializationStyle) {
  `AFHTTPRequestSerializer` conforms to the `AFURLRequestSerialization` & `AFURLResponseSerialization` protocols, offering a concrete base implementation of query string / URL form-encoded parameter serialization and default request headers, as well as response status code and content type validation.
 
  Any request or response serializer dealing with HTTP is encouraged to subclass `AFHTTPRequestSerializer` in order to ensure consistent default behavior.
+ 
+ AFHTTPRequestSerializer 遵循 AFURLRequestSerialization AFURLResponseSerialization这两个协议,提供base url和header ,也有相应状态码
+ 
+所有的 http相关的相应,
+ 
+ 
+ 
  */
+
+
+
+
+
 @interface AFHTTPRequestSerializer : NSObject <AFURLRequestSerialization>
 
 /**
