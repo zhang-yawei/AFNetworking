@@ -61,6 +61,8 @@
 }
 
 + (CGFloat)detailTextHeight:(NSString *)text {
+    
+    // 计算cell高
     CGRect rectToFit = [text boundingRectWithSize:CGSizeMake(240.0f, CGFLOAT_MAX) options:NSStringDrawingUsesLineFragmentOrigin attributes:@{NSFontAttributeName: [UIFont systemFontOfSize:12.0f]} context:nil];
     return rectToFit.size.height;
 }

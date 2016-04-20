@@ -29,6 +29,8 @@
 #endif
 
 static dispatch_queue_t url_session_manager_creation_queue() {
+    
+    // 单例,生成一个串行队列.叫 af_url_session_manager_creation_queue
     static dispatch_queue_t af_url_session_manager_creation_queue;
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
@@ -38,6 +40,7 @@ static dispatch_queue_t url_session_manager_creation_queue() {
     return af_url_session_manager_creation_queue;
 }
 
+// 在上面的串行队列中,执行一个block
 static void url_session_manager_create_task_safely(dispatch_block_t block) {
     if (NSFoundationVersionNumber < NSFoundationVersionNumber_With_Fixed_5871104061079552_bug) {
         // Fix of bug
@@ -49,6 +52,7 @@ static void url_session_manager_create_task_safely(dispatch_block_t block) {
     }
 }
 
+// 单例创建一个并行队列 af_url_session_manager_processing_queue
 static dispatch_queue_t url_session_manager_processing_queue() {
     static dispatch_queue_t af_url_session_manager_processing_queue;
     static dispatch_once_t onceToken;
@@ -59,6 +63,7 @@ static dispatch_queue_t url_session_manager_processing_queue() {
     return af_url_session_manager_processing_queue;
 }
 
+// 单例创建一个 dispatch_group. af_url_session_manager_completion_group
 static dispatch_group_t url_session_manager_completion_group() {
     static dispatch_group_t af_url_session_manager_completion_group;
     static dispatch_once_t onceToken;
@@ -76,6 +81,7 @@ NSString * const AFURLSessionDidInvalidateNotification = @"com.alamofire.network
 NSString * const AFURLSessionDownloadTaskDidFailToMoveFileNotification = @"com.alamofire.networking.session.download.file-manager-error";
 
 NSString * const AFNetworkingTaskDidCompleteSerializedResponseKey = @"com.alamofire.networking.task.complete.serializedresponse";
+
 NSString * const AFNetworkingTaskDidCompleteResponseSerializerKey = @"com.alamofire.networking.task.complete.responseserializer";
 NSString * const AFNetworkingTaskDidCompleteResponseDataKey = @"com.alamofire.networking.complete.finish.responsedata";
 NSString * const AFNetworkingTaskDidCompleteErrorKey = @"com.alamofire.networking.task.complete.error";
@@ -119,9 +125,13 @@ typedef void (^AFURLSessionTaskCompletionHandler)(NSURLResponse *response, id re
 @property (nonatomic, strong) NSProgress *uploadProgress;
 @property (nonatomic, strong) NSProgress *downloadProgress;
 @property (nonatomic, copy) NSURL *downloadFileURL;
+// downLoadTask 完成的block
 @property (nonatomic, copy) AFURLSessionDownloadTaskDidFinishDownloadingBlock downloadTaskDidFinishDownloading;
+// upLoad sessionTask 的进度
 @property (nonatomic, copy) AFURLSessionTaskProgressBlock uploadProgressBlock;
+// downLoad sessionTask下载的进度
 @property (nonatomic, copy) AFURLSessionTaskProgressBlock downloadProgressBlock;
+// sessionTask 完成的回调
 @property (nonatomic, copy) AFURLSessionTaskCompletionHandler completionHandler;
 @end
 
@@ -133,8 +143,10 @@ typedef void (^AFURLSessionTaskCompletionHandler)(NSURLResponse *response, id re
         return nil;
     }
 
+    // 初始化一系列的信息
     self.mutableData = [NSMutableData data];
     self.uploadProgress = [[NSProgress alloc] initWithParent:nil userInfo:nil];
+    // 重的大小不能确定
     self.uploadProgress.totalUnitCount = NSURLSessionTransferSizeUnknown;
 
     self.downloadProgress = [[NSProgress alloc] initWithParent:nil userInfo:nil];
@@ -147,18 +159,24 @@ typedef void (^AFURLSessionTaskCompletionHandler)(NSURLResponse *response, id re
 - (void)setupProgressForTask:(NSURLSessionTask *)task {
     __weak __typeof__(task) weakTask = task;
 
+    // 要发送body的总的位数
     self.uploadProgress.totalUnitCount = task.countOfBytesExpectedToSend;
+    // 相应的要接收的长度
     self.downloadProgress.totalUnitCount = task.countOfBytesExpectedToReceive;
     [self.uploadProgress setCancellable:YES];
+    // progerss 的取消时间,为task cancel
     [self.uploadProgress setCancellationHandler:^{
         __typeof__(weakTask) strongTask = weakTask;
         [strongTask cancel];
     }];
     [self.uploadProgress setPausable:YES];
+    // passing 停顿. task suspend  展示停顿一个task
     [self.uploadProgress setPausingHandler:^{
         __typeof__(weakTask) strongTask = weakTask;
         [strongTask suspend];
     }];
+    
+    // 恢复 task resume
     if ([self.uploadProgress respondsToSelector:@selector(setResumingHandler:)]) {
         [self.uploadProgress setResumingHandler:^{
             __typeof__(weakTask) strongTask = weakTask;
@@ -184,10 +202,12 @@ typedef void (^AFURLSessionTaskCompletionHandler)(NSURLResponse *response, id re
         }];
     }
 
+    
     [task addObserver:self
            forKeyPath:NSStringFromSelector(@selector(countOfBytesReceived))
               options:NSKeyValueObservingOptionNew
               context:NULL];
+    
     [task addObserver:self
            forKeyPath:NSStringFromSelector(@selector(countOfBytesExpectedToReceive))
               options:NSKeyValueObservingOptionNew
@@ -277,11 +297,13 @@ didCompleteWithError:(NSError *)error
     if (error) {
         userInfo[AFNetworkingTaskDidCompleteErrorKey] = error;
 
+        // 错误信息
         dispatch_group_async(manager.completionGroup ?: url_session_manager_completion_group(), manager.completionQueue ?: dispatch_get_main_queue(), ^{
             if (self.completionHandler) {
                 self.completionHandler(task.response, responseObject, error);
             }
 
+            // 发消息
             dispatch_async(dispatch_get_main_queue(), ^{
                 [[NSNotificationCenter defaultCenter] postNotificationName:AFNetworkingTaskDidCompleteNotification object:task userInfo:userInfo];
             });
@@ -338,9 +360,11 @@ didFinishDownloadingToURL:(NSURL *)location
     if (self.downloadTaskDidFinishDownloading) {
         self.downloadFileURL = self.downloadTaskDidFinishDownloading(session, downloadTask, location);
         if (self.downloadFileURL) {
+            // 下载完成只有,从临时文件移动到 downloadFileURL
             [[NSFileManager defaultManager] moveItemAtURL:location toURL:self.downloadFileURL error:&fileManagerError];
 
             if (fileManagerError) {
+                // 移动发生错误.
                 [[NSNotificationCenter defaultCenter] postNotificationName:AFURLSessionDownloadTaskDidFailToMoveFileNotification object:downloadTask userInfo:fileManagerError.userInfo];
             }
         }
@@ -360,12 +384,14 @@ didFinishDownloadingToURL:(NSURL *)location
  *  - https://github.com/AFNetworking/AFNetworking/pull/2702
  */
 
+// 方法交换
 static inline void af_swizzleSelector(Class theClass, SEL originalSelector, SEL swizzledSelector) {
     Method originalMethod = class_getInstanceMethod(theClass, originalSelector);
     Method swizzledMethod = class_getInstanceMethod(theClass, swizzledSelector);
     method_exchangeImplementations(originalMethod, swizzledMethod);
 }
 
+// 添加方法
 static inline BOOL af_addMethod(Class theClass, SEL selector, Method method) {
     return class_addMethod(theClass, selector,  method_getImplementation(method),  method_getTypeEncoding(method));
 }
@@ -412,18 +438,29 @@ static NSString * const AFNSURLSessionTaskDidSuspendNotification = @"com.alamofi
             7) If the current class implementation of `resume` is not equal to the super class implementation of `resume` AND the current implementation of `resume` is not equal to the original implementation of `af_resume`, THEN swizzle the methods
             8) Set the current class to the super class, and repeat steps 3-8
          */
+        
+        
+        // + ephemeralSessionConfiguration返回一个预设配置，没有持久性存储的缓存，Cookie或证书。这对于实现像秘密浏览功能的功能来说，是很理想的。
         NSURLSessionConfiguration *configuration = [NSURLSessionConfiguration ephemeralSessionConfiguration];
         NSURLSession * session = [NSURLSession sessionWithConfiguration:configuration];
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wnonnull"
         NSURLSessionDataTask *localDataTask = [session dataTaskWithURL:nil];
 #pragma clang diagnostic pop
+        // 取af_resume的imp
         IMP originalAFResumeIMP = method_getImplementation(class_getInstanceMethod([self class], @selector(af_resume)));
+        // currentClass  NSURLSessionDataTask
         Class currentClass = [localDataTask class];
         
+        
+        // NSURLSessionDataTask resume 存在
         while (class_getInstanceMethod(currentClass, @selector(resume))) {
+//            superClass  NSURLSessionTask
             Class superClass = [currentClass superclass];
+            
+            //  NSURLSessionDataTask resume 的 imp
             IMP classResumeIMP = method_getImplementation(class_getInstanceMethod(currentClass, @selector(resume)));
+//            NSURLSessionTask de imp
             IMP superclassResumeIMP = method_getImplementation(class_getInstanceMethod(superClass, @selector(resume)));
             if (classResumeIMP != superclassResumeIMP &&
                 originalAFResumeIMP != classResumeIMP) {
@@ -458,9 +495,10 @@ static NSString * const AFNSURLSessionTaskDidSuspendNotification = @"com.alamofi
 - (void)af_resume {
     NSAssert([self respondsToSelector:@selector(state)], @"Does not respond to state");
     NSURLSessionTaskState state = [self state];
-    [self af_resume];
+    [self af_resume];  // 方法交换后, [self resume];  重修开始
     
     if (state != NSURLSessionTaskStateRunning) {
+        // dataTask resume后发送通知
         [[NSNotificationCenter defaultCenter] postNotificationName:AFNSURLSessionTaskDidResumeNotification object:self];
     }
 }
@@ -468,9 +506,10 @@ static NSString * const AFNSURLSessionTaskDidSuspendNotification = @"com.alamofi
 - (void)af_suspend {
     NSAssert([self respondsToSelector:@selector(state)], @"Does not respond to state");
     NSURLSessionTaskState state = [self state];
-    [self af_suspend];
+    [self af_suspend]; // 方法交换后 [self suspend]; 挂起,结束
     
     if (state != NSURLSessionTaskStateSuspended) {
+        // dataTask suspend 后发送通知
         [[NSNotificationCenter defaultCenter] postNotificationName:AFNSURLSessionTaskDidSuspendNotification object:self];
     }
 }
@@ -515,6 +554,7 @@ static NSString * const AFNSURLSessionTaskDidSuspendNotification = @"com.alamofi
     }
 
     if (!configuration) {
+        // defaultSessionConfiguration返回标准配置，这实际上与NSURLConnection的网络协议栈是一样的，具有相同的共享 NSHTTPCookieStorage，共享NSURLCache和共享NSURLCredentialStorage。
         configuration = [NSURLSessionConfiguration defaultSessionConfiguration];
     }
 
