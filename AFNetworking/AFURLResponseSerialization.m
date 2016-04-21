@@ -35,12 +35,14 @@ NSString * const AFURLResponseSerializationErrorDomain = @"com.alamofire.error.s
 NSString * const AFNetworkingOperationFailingURLResponseErrorKey = @"com.alamofire.serialization.response.error.response";
 NSString * const AFNetworkingOperationFailingURLResponseDataErrorKey = @"com.alamofire.serialization.response.error.data";
 
+// 给error添加underlyingError
 static NSError * AFErrorWithUnderlyingError(NSError *error, NSError *underlyingError) {
     if (!error) {
         return underlyingError;
     }
 
     if (!underlyingError || error.userInfo[NSUnderlyingErrorKey]) {
+        // 如果underlyingError 不存在,或者 error.userInfo[NSUnderlyingErrorKey]存在
         return error;
     }
 
@@ -60,6 +62,7 @@ static BOOL AFErrorOrUnderlyingErrorHasCodeInDomain(NSError *error, NSInteger co
     return NO;
 }
 
+//   removesKeysWithNullValues  递归
 static id AFJSONObjectByRemovingKeysWithNullValues(id JSONObject, NSJSONReadingOptions readingOptions) {
     if ([JSONObject isKindOfClass:[NSArray class]]) {
         NSMutableArray *mutableArray = [NSMutableArray arrayWithCapacity:[(NSArray *)JSONObject count]];
@@ -107,6 +110,31 @@ static id AFJSONObjectByRemovingKeysWithNullValues(id JSONObject, NSJSONReadingO
 
 #pragma mark -
 
+/*
+ 媒体类型通常是通过 HTTP 协议，由 Web 服务器告知浏览器的，更准确地说，是通过 Content-Type 来表示的，例如:
+ 
+ Content-Type: text/HTML
+ 
+ 
+ 
+ 超文本标记语言文本 .html,.html text/html
+ 普通文本 .txt text/plain
+ RTF文本 .rtf application/rtf
+ GIF图形 .gif image/gif
+ JPEG图形 .ipeg,.jpg image/jpeg
+ au声音文件 .au audio/basic
+ MIDI音乐文件 mid,.midi audio/midi,audio/x-midi
+ RealAudio音乐文件 .ra, .ram audio/x-pn-realaudio
+ MPEG文件 .mpg,.mpeg video/mpeg
+ AVI文件 .avi video/x-msvideo
+ GZIP文件 .gz application/x-gzip
+ TAR文件 .tar application/x-tar
+ */
+
+
+
+
+
 - (BOOL)validateResponse:(NSHTTPURLResponse *)response
                     data:(NSData *)data
                    error:(NSError * __autoreleasing *)error
@@ -115,6 +143,7 @@ static id AFJSONObjectByRemovingKeysWithNullValues(id JSONObject, NSJSONReadingO
     NSError *validationError = nil;
 
     if (response && [response isKindOfClass:[NSHTTPURLResponse class]]) {
+        // acceptableContentTypes 错误的情况下
         if (self.acceptableContentTypes && ![self.acceptableContentTypes containsObject:[response MIMEType]] &&
             !([response MIMEType] == nil && [data length] == 0)) {
 
@@ -133,7 +162,7 @@ static id AFJSONObjectByRemovingKeysWithNullValues(id JSONObject, NSJSONReadingO
 
             responseIsValid = NO;
         }
-
+// acceptableStatusCodes 错误的情况下.
         if (self.acceptableStatusCodes && ![self.acceptableStatusCodes containsIndex:(NSUInteger)response.statusCode] && [response URL]) {
             NSMutableDictionary *mutableUserInfo = [@{
                                                NSLocalizedDescriptionKey: [NSString stringWithFormat:NSLocalizedStringFromTable(@"Request failed: %@ (%ld)", @"AFNetworking", nil), [NSHTTPURLResponse localizedStringForStatusCode:response.statusCode], (long)response.statusCode],
@@ -159,6 +188,7 @@ static id AFJSONObjectByRemovingKeysWithNullValues(id JSONObject, NSJSONReadingO
 }
 
 #pragma mark - AFURLResponseSerialization
+
 
 - (id)responseObjectForResponse:(NSURLResponse *)response
                            data:(NSData *)data
@@ -225,6 +255,7 @@ static id AFJSONObjectByRemovingKeysWithNullValues(id JSONObject, NSJSONReadingO
         return nil;
     }
 
+    // 设置content type,也就是MIMEType
     self.acceptableContentTypes = [NSSet setWithObjects:@"application/json", @"text/json", @"text/javascript", nil];
 
     return self;
@@ -237,6 +268,7 @@ static id AFJSONObjectByRemovingKeysWithNullValues(id JSONObject, NSJSONReadingO
                           error:(NSError *__autoreleasing *)error
 {
     if (![self validateResponse:(NSHTTPURLResponse *)response data:data error:error]) {
+        // 发送错误
         if (!error || AFErrorOrUnderlyingErrorHasCodeInDomain(*error, NSURLErrorCannotDecodeContentData, AFURLResponseSerializationErrorDomain)) {
             return nil;
         }
@@ -534,8 +566,10 @@ static NSLock* imageLock = nil;
 
 @end
 
+// 重置image的大小
 static UIImage * AFImageWithDataAtScale(NSData *data, CGFloat scale) {
     UIImage *image = [UIImage af_safeImageWithData:data];
+    // 如果是动图
     if (image.images) {
         return image;
     }

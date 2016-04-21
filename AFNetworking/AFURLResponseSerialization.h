@@ -94,6 +94,8 @@ NS_ASSUME_NONNULL_BEGIN
 
  @return `YES` if the response is valid, otherwise `NO`.
  */
+
+//检测返回的HTTP状态码和数据类型是否合法，属性acceptableStatusCodes和acceptableContentTypes规定了合法的状态码和数据类型，例如JSONSerialization就把acceptableContentTypes设为@”application/json”, @”text/json”, @”text/javascript”，若不是这三者之一，就验证失败，返回相应的NSError对象。一般子类不需要重写这个方法，只需要设置好acceptableStatusCodes和acceptableContentTypes就行了。
 - (BOOL)validateResponse:(nullable NSHTTPURLResponse *)response
                     data:(nullable NSData *)data
                    error:(NSError * _Nullable __autoreleasing *)error;

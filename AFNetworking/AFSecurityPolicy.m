@@ -150,7 +150,7 @@ static NSArray * AFPublicKeyTrustChainForServerTrust(SecTrustRef serverTrust) {
 
 @interface AFSecurityPolicy()
 @property (readwrite, nonatomic, assign) AFSSLPinningMode SSLPinningMode;
-@property (readwrite, nonatomic, strong) NSSet *pinnedPublicKeys;
+@property (readwrite, nonatomic, strong) NSSet *pinnedPublicKeys; // 公钥 有cerData初始化
 @end
 
 @implementation AFSecurityPolicy
@@ -219,6 +219,7 @@ static NSArray * AFPublicKeyTrustChainForServerTrust(SecTrustRef serverTrust) {
             if (!publicKey) {
                 continue;
             }
+            // 公钥
             [mutablePinnedPublicKeys addObject:publicKey];
         }
         self.pinnedPublicKeys = [NSSet setWithSet:mutablePinnedPublicKeys];
