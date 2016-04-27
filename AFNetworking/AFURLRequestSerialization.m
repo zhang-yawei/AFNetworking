@@ -70,6 +70,7 @@ NSString * AFPercentEscapedStringFromString(NSString *string) {
         range = [string rangeOfComposedCharacterSequencesForRange:range];
 
         NSString *substring = [string substringWithRange:range];
+        // 这样的字符不要转码   :#[]@ !$&'()*+,;=
         NSString *encoded = [substring stringByAddingPercentEncodingWithAllowedCharacters:allowedCharacterSet];
         [escaped appendString:encoded];
 
@@ -98,8 +99,8 @@ NSString * AFPercentEscapedStringFromString(NSString *string) {
         return nil;
     }
 
-    self.field = field;
-    self.value = value;
+    self.field = field;  // key
+    self.value = value; // value
 
     return self;
 }
@@ -129,12 +130,15 @@ NSString * AFQueryStringFromParameters(NSDictionary *parameters) {
 }
 
 NSArray * AFQueryStringPairsFromDictionary(NSDictionary *dictionary) {
+    
+    // 返回 AFQueryStringPair 的数组
     return AFQueryStringPairsFromKeyAndValue(nil, dictionary);
 }
 
 NSArray * AFQueryStringPairsFromKeyAndValue(NSString *key, id value) {
     NSMutableArray *mutableQueryStringComponents = [NSMutableArray array];
-
+// ascend 升序
+    // 排序  根据 description升序排列
     NSSortDescriptor *sortDescriptor = [NSSortDescriptor sortDescriptorWithKey:@"description" ascending:YES selector:@selector(compare:)];
 
     if ([value isKindOfClass:[NSDictionary class]]) {
@@ -143,6 +147,7 @@ NSArray * AFQueryStringPairsFromKeyAndValue(NSString *key, id value) {
         for (id nestedKey in [dictionary.allKeys sortedArrayUsingDescriptors:@[ sortDescriptor ]]) {
             id nestedValue = dictionary[nestedKey];
             if (nestedValue) {
+                // 递归调用 AFQueryStringPairsFromKeyAndValue,
                 [mutableQueryStringComponents addObjectsFromArray:AFQueryStringPairsFromKeyAndValue((key ? [NSString stringWithFormat:@"%@[%@]", key, nestedKey] : nestedKey), nestedValue)];
             }
         }
@@ -357,14 +362,19 @@ forHTTPHeaderField:(NSString *)field
     NSParameterAssert(url);
 
     NSMutableURLRequest *mutableRequest = [[NSMutableURLRequest alloc] initWithURL:url];
+    // get or post
     mutableRequest.HTTPMethod = method;
 
+    // keypatch:cachePolicy,HTTPShouldHandleCookies,HTTPShouldUsePipelining,networkServiceType,timeoutInterval
+    
+    // 设置其他的一些request属性
     for (NSString *keyPath in AFHTTPRequestSerializerObservedKeyPaths()) {
         if ([self.mutableObservedChangedKeyPaths containsObject:keyPath]) {
             [mutableRequest setValue:[self valueForKeyPath:keyPath] forKey:keyPath];
         }
     }
 
+    // 设置header 和body
     mutableRequest = [[self requestBySerializingRequest:mutableRequest withParameters:parameters error:error] mutableCopy];
 
 	return mutableRequest;
@@ -472,6 +482,7 @@ forHTTPHeaderField:(NSString *)field
     NSMutableURLRequest *mutableRequest = [request mutableCopy];
 
     [self.HTTPRequestHeaders enumerateKeysAndObjectsUsingBlock:^(id field, id value, BOOL * __unused stop) {
+        // 把 HTTPRequestHeaders 的值 放在header里
         if (![request valueForHTTPHeaderField:field]) {
             [mutableRequest setValue:value forHTTPHeaderField:field];
         }
@@ -481,6 +492,7 @@ forHTTPHeaderField:(NSString *)field
     if (parameters) {
         if (self.queryStringSerialization) {
             NSError *serializationError;
+            // 根据 parameters 拼接出 query,这个block是自己设定的.
             query = self.queryStringSerialization(request, parameters, &serializationError);
 
             if (serializationError) {
@@ -500,6 +512,8 @@ forHTTPHeaderField:(NSString *)field
     }
 
     if ([self.HTTPMethodsEncodingParametersInURI containsObject:[[request HTTPMethod] uppercaseString]]) {
+        
+//        默认  GET", @"HEAD", @"DELETE  把参数拼接到url后面
         if (query && query.length > 0) {
             mutableRequest.URL = [NSURL URLWithString:[[mutableRequest.URL absoluteString] stringByAppendingFormat:mutableRequest.URL.query ? @"&%@" : @"?%@", query]];
         }
@@ -508,9 +522,13 @@ forHTTPHeaderField:(NSString *)field
         if (!query) {
             query = @"";
         }
+//      content-type  mime-type;
         if (![mutableRequest valueForHTTPHeaderField:@"Content-Type"]) {
             [mutableRequest setValue:@"application/x-www-form-urlencoded" forHTTPHeaderField:@"Content-Type"];
+        
         }
+        
+        // httpbody
         [mutableRequest setHTTPBody:[query dataUsingEncoding:self.stringEncoding]];
     }
 
