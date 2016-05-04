@@ -77,6 +77,8 @@ static dispatch_group_t url_session_manager_completion_group() {
 NSString * const AFNetworkingTaskDidResumeNotification = @"com.alamofire.networking.task.resume";
 NSString * const AFNetworkingTaskDidCompleteNotification = @"com.alamofire.networking.task.complete";
 NSString * const AFNetworkingTaskDidSuspendNotification = @"com.alamofire.networking.task.suspend";
+
+// 代理  didBecomeInvalidWithError
 NSString * const AFURLSessionDidInvalidateNotification = @"com.alamofire.networking.session.invalidate";
 NSString * const AFURLSessionDownloadTaskDidFailToMoveFileNotification = @"com.alamofire.networking.session.download.file-manager-error";
 
@@ -117,7 +119,8 @@ typedef void (^AFURLSessionTaskProgressBlock)(NSProgress *);
 typedef void (^AFURLSessionTaskCompletionHandler)(NSURLResponse *response, id responseObject, NSError *error);
 
 
-#pragma mark -
+#pragma mark - AFURLSessionManagerTaskDelegate
+
 
 @interface AFURLSessionManagerTaskDelegate : NSObject <NSURLSessionTaskDelegate, NSURLSessionDataDelegate, NSURLSessionDownloadDelegate>
 @property (nonatomic, weak) AFURLSessionManager *manager;
@@ -520,7 +523,11 @@ static NSString * const AFNSURLSessionTaskDidSuspendNotification = @"com.alamofi
 }
 @end
 
-#pragma mark -
+#pragma mark - AFURLSessionManager
+/**
+ *  1.配置configuration
+    2.初始化NSURLsession.并且代理self
+ */
 
 @interface AFURLSessionManager ()
 @property (readwrite, nonatomic, strong) NSURLSessionConfiguration *sessionConfiguration;
@@ -570,6 +577,8 @@ static NSString * const AFNSURLSessionTaskDidSuspendNotification = @"com.alamofi
 
     
     //An operation queue for scheduling the delegate calls and completion handlers. The queue need not be a serial queue. If nil, the session creates a serial operation queue for performing all delegate method calls and completion handler calls.
+    
+     // 初始化session 并且指定delegate和operationQueue
     self.session = [NSURLSession sessionWithConfiguration:self.sessionConfiguration delegate:self delegateQueue:self.operationQueue];
 
     self.responseSerializer = [AFJSONResponseSerializer serializer];
@@ -639,6 +648,7 @@ static NSString * const AFNSURLSessionTaskDidSuspendNotification = @"com.alamofi
 
 #pragma mark -
 
+// 根据task去除delegate,
 - (AFURLSessionManagerTaskDelegate *)delegateForTask:(NSURLSessionTask *)task {
     NSParameterAssert(task);
 
@@ -669,6 +679,8 @@ static NSString * const AFNSURLSessionTaskDidSuspendNotification = @"com.alamofi
               downloadProgress:(nullable void (^)(NSProgress *downloadProgress)) downloadProgressBlock
              completionHandler:(void (^)(NSURLResponse *response, id responseObject, NSError *error))completionHandler
 {
+    // 创建一个delegate,
+
     
     AFURLSessionManagerTaskDelegate *delegate = [[AFURLSessionManagerTaskDelegate alloc] init];
     delegate.manager = self;
@@ -718,9 +730,11 @@ static NSString * const AFNSURLSessionTaskDidSuspendNotification = @"com.alamofi
     delegate.downloadProgressBlock = downloadProgressBlock;
 }
 
+
+// 移除task,不再监听task
 - (void)removeDelegateForTask:(NSURLSessionTask *)task {
     NSParameterAssert(task);
-
+    
     AFURLSessionManagerTaskDelegate *delegate = [self delegateForTask:task];
     [self.lock lock];
     [delegate cleanUpProgressForTask:task];
@@ -910,6 +924,7 @@ static NSString * const AFNSURLSessionTaskDidSuspendNotification = @"com.alamofi
 }
 
 #pragma mark -
+// 根据task取出delegate,返回progress
 - (NSProgress *)uploadProgressForTask:(NSURLSessionTask *)task {
     return [[self delegateForTask:task] uploadProgress];
 }
@@ -992,6 +1007,8 @@ static NSString * const AFNSURLSessionTaskDidSuspendNotification = @"com.alamofi
     return [NSString stringWithFormat:@"<%@: %p, session: %@, operationQueue: %@>", NSStringFromClass([self class]), self, self.session, self.operationQueue];
 }
 
+
+
 - (BOOL)respondsToSelector:(SEL)selector {
     if (selector == @selector(URLSession:task:willPerformHTTPRedirection:newRequest:completionHandler:)) {
         return self.taskWillPerformHTTPRedirection != nil;
@@ -1011,6 +1028,7 @@ static NSString * const AFNSURLSessionTaskDidSuspendNotification = @"com.alamofi
 - (void)URLSession:(NSURLSession *)session
 didBecomeInvalidWithError:(NSError *)error
 {
+    // 把代理用block执行
     if (self.sessionDidBecomeInvalid) {
         self.sessionDidBecomeInvalid(session, error);
     }
