@@ -120,10 +120,13 @@ typedef NS_ENUM(NSUInteger, AFHTTPRequestQueryStringSerializationStyle) {
 @property (nonatomic, assign) BOOL allowsCellularAccess;
 
 /**
+ 缓存策略
  The cache policy of created requests. `NSURLRequestUseProtocolCachePolicy` by default.
 
  @see NSMutableURLRequest -setCachePolicy:
  */
+
+
 @property (nonatomic, assign) NSURLRequestCachePolicy cachePolicy;
 
 /**
@@ -133,7 +136,7 @@ typedef NS_ENUM(NSUInteger, AFHTTPRequestQueryStringSerializationStyle) {
  */
 @property (nonatomic, assign) BOOL HTTPShouldHandleCookies;
 
-/**
+/** 是否允许通道
  Whether created requests can continue transmitting data before receiving a response from an earlier transmission. `NO` by default
 
  @see NSMutableURLRequest -setHTTPShouldUsePipelining:
@@ -147,7 +150,7 @@ typedef NS_ENUM(NSUInteger, AFHTTPRequestQueryStringSerializationStyle) {
  */
 @property (nonatomic, assign) NSURLRequestNetworkServiceType networkServiceType;
 
-/**
+/** 超时时限
  The timeout interval, in seconds, for created requests. The default timeout interval is 60 seconds.
 
  @see NSMutableURLRequest -setTimeoutInterval:
@@ -158,7 +161,7 @@ typedef NS_ENUM(NSUInteger, AFHTTPRequestQueryStringSerializationStyle) {
 /// @name Configuring HTTP Request Headers
 ///---------------------------------------
 
-/**
+/** 请求头
  Default HTTP header field values to be applied to serialized requests. By default, these include the following:
 
  - `Accept-Language` with the contents of `NSLocale +preferredLanguages`
@@ -239,6 +242,7 @@ forHTTPHeaderField:(NSString *)field;
 ///-------------------------------
 
 /**
+ 
  Creates an `NSMutableURLRequest` object with the specified HTTP method and URL string.
 
  If the HTTP method is `GET`, `HEAD`, or `DELETE`, the parameters will be used to construct a url-encoded query string that is appended to the request's URL. Otherwise, the parameters will be encoded according to the value of the `parameterEncoding` property, and set as the request body.

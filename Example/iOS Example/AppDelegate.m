@@ -29,6 +29,8 @@
 
 - (BOOL)application:(__unused UIApplication *)application didFinishLaunchingWithOptions:(__unused NSDictionary *)launchOptions
 {
+    
+    // 另外设置cache地址,程序退出后重新打开也可以继续保持.注意 diskpath
     NSURLCache *URLCache = [[NSURLCache alloc] initWithMemoryCapacity:4 * 1024 * 1024 diskCapacity:20 * 1024 * 1024 diskPath:nil];
     
     [NSURLCache setSharedURLCache:URLCache];
