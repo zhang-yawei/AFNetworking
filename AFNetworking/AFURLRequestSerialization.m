@@ -179,6 +179,7 @@ NSArray * AFQueryStringPairsFromKeyAndValue(NSString *key, id value) {
 
 #pragma mark -
 
+// 生成一个包括 @{allowsCellularAccess,HTTPShouldHandleCookies,HTTPShouldUsePipelining cachePolicy,networkServiceType,timeoutInterval}的数组
 static NSArray * AFHTTPRequestSerializerObservedKeyPaths() {
     static NSArray *_AFHTTPRequestSerializerObservedKeyPaths = nil;
     static dispatch_once_t onceToken;
@@ -210,11 +211,13 @@ static void *AFHTTPRequestSerializerObserverContext = &AFHTTPRequestSerializerOb
         return nil;
     }
 
+    // 编码方式
     self.stringEncoding = NSUTF8StringEncoding;
 
+    // 请求头
     self.mutableHTTPRequestHeaders = [NSMutableDictionary dictionary];
 
-    // Accept-Language HTTP Header; see http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#sec14.4
+    
     NSMutableArray *acceptLanguagesComponents = [NSMutableArray array];
     [[NSLocale preferredLanguages] enumerateObjectsUsingBlock:^(id obj, NSUInteger idx, BOOL *stop) {
         float q = 1.0f - (idx * 0.1f);
@@ -249,6 +252,8 @@ static void *AFHTTPRequestSerializerObserverContext = &AFHTTPRequestSerializerOb
     // HTTP Method Definitions; see http://www.w3.org/Protocols/rfc2616/rfc2616-sec9.html
     self.HTTPMethodsEncodingParametersInURI = [NSSet setWithObjects:@"GET", @"HEAD", @"DELETE", nil];
 
+    // allowsCellularAccess,cachePolicy,HTTPShouldHandleCookies, ,HTTPShouldUsePipelining, ,networkServiceType,timeoutInterval 的改变
+    
     self.mutableObservedChangedKeyPaths = [NSMutableSet set];
     for (NSString *keyPath in AFHTTPRequestSerializerObservedKeyPaths()) {
         if ([self respondsToSelector:NSSelectorFromString(keyPath)]) {
@@ -272,6 +277,7 @@ static void *AFHTTPRequestSerializerObserverContext = &AFHTTPRequestSerializerOb
 // Workarounds for crashing behavior using Key-Value Observing with XCTest
 // See https://github.com/AFNetworking/AFNetworking/issues/2523
 
+// 重写set方法,这些值改变的时候,通知kvo
 - (void)setAllowsCellularAccess:(BOOL)allowsCellularAccess {
     [self willChangeValueForKey:NSStringFromSelector(@selector(allowsCellularAccess))];
     _allowsCellularAccess = allowsCellularAccess;
@@ -343,6 +349,7 @@ forHTTPHeaderField:(NSString *)field
     self.queryStringSerialization = nil;
 }
 
+
 - (void)setQueryStringSerializationWithBlock:(NSString *(^)(NSURLRequest *, id, NSError *__autoreleasing *))block {
     self.queryStringSerialization = block;
 }
@@ -367,7 +374,8 @@ forHTTPHeaderField:(NSString *)field
 
     // keypatch:cachePolicy,HTTPShouldHandleCookies,HTTPShouldUsePipelining,networkServiceType,timeoutInterval
     
-    // 设置其他的一些request属性
+    // 设置其他的一些的cachepolicy,timeout等的属性, 是由serialization提供的.
+    // 而mutableObservedChangedKeyPaths的内容是根据监听 serialization的改变确定的.
     for (NSString *keyPath in AFHTTPRequestSerializerObservedKeyPaths()) {
         if ([self.mutableObservedChangedKeyPaths containsObject:keyPath]) {
             [mutableRequest setValue:[self valueForKeyPath:keyPath] forKey:keyPath];
@@ -473,6 +481,7 @@ forHTTPHeaderField:(NSString *)field
 
 #pragma mark - AFURLRequestSerialization
 
+// 设置header,querystring,body
 - (NSURLRequest *)requestBySerializingRequest:(NSURLRequest *)request
                                withParameters:(id)parameters
                                         error:(NSError *__autoreleasing *)error
@@ -490,6 +499,7 @@ forHTTPHeaderField:(NSString *)field
 
     NSString *query = nil;
     if (parameters) {
+        // 如果自定义了设置query的方式
         if (self.queryStringSerialization) {
             NSError *serializationError;
             // 根据 parameters 拼接出 query,这个block是自己设定的.
@@ -503,6 +513,7 @@ forHTTPHeaderField:(NSString *)field
                 return nil;
             }
         } else {
+            // 如果没有自定义querystring的拼接方式.就是用afn默认的方式
             switch (self.queryStringSerializationStyle) {
                 case AFHTTPRequestQueryStringDefaultStyle:
                     query = AFQueryStringFromParameters(parameters);
@@ -528,7 +539,7 @@ forHTTPHeaderField:(NSString *)field
         
         }
         
-        // httpbody
+        // post方法会把query放在body里.
         [mutableRequest setHTTPBody:[query dataUsingEncoding:self.stringEncoding]];
     }
 
@@ -545,6 +556,7 @@ forHTTPHeaderField:(NSString *)field
     return [super automaticallyNotifiesObserversForKey:key];
 }
 
+// 观察者,观察serialization属性的变化,如果有重新设置,就添加到 mutableObservedChangedKeyPaths 中,用来设置Request的属性.
 - (void)observeValueForKeyPath:(NSString *)keyPath
                       ofObject:(__unused id)object
                         change:(NSDictionary *)change
