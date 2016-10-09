@@ -566,7 +566,7 @@ static NSString * const AFNSURLSessionTaskDidSuspendNotification = @"com.alamofi
     }
 
     if (!configuration) {
-        // defaultSessionConfiguration返回标准配置，这实际上与NSURLConnection的网络协议栈是一样的，具有相同的共享 NSHTTPCookieStorage(管理cookie 的单例)共享NSURLCache(缓存)和共享NSURLCredentialStorage。(认证信息) //
+        // defaultSessionConfiguration返回标准配置，这实际上与NSURLConnection的网络协议栈是一样的，具有相同的共享 NSHTTPCookie(管理cookie 的单例)Storage共享NSURLCache(缓存)和共享NSURLCredentialStorage。(认证信息) //
         configuration = [NSURLSessionConfiguration defaultSessionConfiguration];
     }
 

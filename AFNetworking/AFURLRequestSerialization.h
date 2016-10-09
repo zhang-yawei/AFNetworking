@@ -204,6 +204,7 @@ forHTTPHeaderField:(NSString *)field;
  @param username The HTTP basic auth username
  @param password The HTTP basic auth password
  */
+// 设置basic auth
 - (void)setAuthorizationHeaderFieldWithUsername:(NSString *)username
                                        password:(NSString *)password;
 
@@ -219,6 +220,7 @@ forHTTPHeaderField:(NSString *)field;
 /**
  HTTP methods for which serialized requests will encode parameters as a query string. `GET`, `HEAD`, and `DELETE` by default.
  */
+// 允许的请求方法
 @property (nonatomic, strong) NSSet <NSString *> *HTTPMethodsEncodingParametersInURI;
 
 /**
@@ -235,6 +237,7 @@ forHTTPHeaderField:(NSString *)field;
 
  @param block A block that defines a process of encoding parameters into a query string. This block returns the query string and takes three arguments: the request, the parameters to encode, and the error that occurred when attempting to encode parameters for the given request.
  */
+// 自定义querystring 的拼接方式.
 - (void)setQueryStringSerializationWithBlock:(nullable NSString * (^)(NSURLRequest *request, id parameters, NSError * __autoreleasing *error))block;
 
 ///-------------------------------

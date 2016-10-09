@@ -47,6 +47,7 @@
 @implementation AFHTTPSessionManager
 @dynamic responseSerializer;
 
+// 工厂方法,创建httpSessionManager
 + (instancetype)manager {
     return [[[self class] alloc] initWithBaseURL:nil];
 }
@@ -78,7 +79,9 @@
 
     self.baseURL = url;
 
+    //  请求 请求配置项
     self.requestSerializer = [AFHTTPRequestSerializer serializer];
+    //
     self.responseSerializer = [AFJSONResponseSerializer serializer];
 
     return self;
