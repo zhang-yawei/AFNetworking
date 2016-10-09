@@ -410,6 +410,8 @@ forHTTPHeaderField:(NSString *)field
         }
     }
 
+    
+    // block 中实现 appendPartWithFormData 方法
     if (block) {
         block(formData);
     }
