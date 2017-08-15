@@ -92,8 +92,10 @@ _out:
 static BOOL AFServerTrustIsValid(SecTrustRef serverTrust) {
     BOOL isValid = NO;
     SecTrustResultType result;
+    // 验证服务端证书.
     __Require_noErr_Quiet(SecTrustEvaluate(serverTrust, &result), _out);
 
+    // 如果得到kSecTrustResultProceed和kSecTrustResultUnspecified之外的类型结果，我们可以认为证书是无效的（不被信任的）。
     isValid = (result == kSecTrustResultUnspecified || result == kSecTrustResultProceed);
 
 _out:
@@ -238,14 +240,14 @@ static NSArray * AFPublicKeyTrustChainForServerTrust(SecTrustRef serverTrust) {
         //  According to the docs, you should only trust your provided certs for evaluation.
         //  Pinned certificates are added to the trust. Without pinned certificates,
         //  there is nothing to evaluate against.
-        //
+        //z
         //  From Apple Docs:
         //          "Do not implicitly trust self-signed certificates as anchors (kSecTrustOptionImplicitAnchors).
         //           Instead, add your own (self-signed) CA certificate to the list of trusted anchors."
         NSLog(@"In order to validate a domain name for self signed certificates, you MUST use pinning.");
         return NO;
-    }
-
+    } 
+    
     NSMutableArray *policies = [NSMutableArray array];
     if (self.validatesDomainName) {
         [policies addObject:(__bridge_transfer id)SecPolicyCreateSSL(true, (__bridge CFStringRef)domain)];

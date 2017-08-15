@@ -1047,6 +1047,7 @@ didReceiveChallenge:(NSURLAuthenticationChallenge *)challenge
         disposition = self.sessionDidReceiveAuthenticationChallenge(session, challenge, &credential);
     } else {
         if ([challenge.protectionSpace.authenticationMethod isEqualToString:NSURLAuthenticationMethodServerTrust]) {
+            // 检测是否信任该服务器
             if ([self.securityPolicy evaluateServerTrust:challenge.protectionSpace.serverTrust forDomain:challenge.protectionSpace.host]) {
                 credential = [NSURLCredential credentialForTrust:challenge.protectionSpace.serverTrust];
                 if (credential) {
@@ -1104,15 +1105,85 @@ didReceiveChallenge:(NSURLAuthenticationChallenge *)challenge
             } else {
                 disposition = NSURLSessionAuthChallengeCancelAuthenticationChallenge;
             }
-        } else {
+        }
+        
+        
+        
+        
+/*-------我添加的----使用的-----*/
+        // 参考 http://www.jb51.net/article/100586.htm
+        // 双向验证添加.
+        else if ([challenge.protectionSpace.authenticationMethod isEqualToString:NSURLAuthenticationMethodClientCertificate]){
+            // client authentication
+            SecIdentityRef identity = NULL;
+            SecTrustRef trust = NULL;
+            NSString *p12 = [[NSBundle mainBundle] pathForResource:@"client"ofType:@"p12"];
+            NSFileManager *fileManager =[NSFileManager defaultManager];
+            
+            if(![fileManager fileExistsAtPath:p12]){
+                NSLog(@"client.p12:not exist");
+            }else{
+                NSData *PKCS12Data = [NSData dataWithContentsOfFile:p12];
+                
+                if ([[self class]extractIdentity:&identity andTrust:&trust fromPKCS12Data:PKCS12Data])
+                {
+                    SecCertificateRef certificate = NULL;
+                    SecIdentityCopyCertificate(identity, &certificate);
+                    const void*certs[] = {certificate};
+                    CFArrayRef certArray =CFArrayCreate(kCFAllocatorDefault, certs,1,NULL);
+                    credential =[NSURLCredential credentialWithIdentity:identity certificates:(__bridge  NSArray*)certArray persistence:NSURLCredentialPersistencePermanent];
+                    disposition =NSURLSessionAuthChallengeUseCredential;
+                }
+            }
+
+        }
+/*-------我添加的---------*/
+        
+        
+        
+        
+        else {
             disposition = NSURLSessionAuthChallengePerformDefaultHandling;
         }
     }
 
+    
+    
+    
+    
+    
     if (completionHandler) {
         completionHandler(disposition, credential);
     }
 }
+
+
+
++(BOOL)extractIdentity:(SecIdentityRef*)outIdentity andTrust:(SecTrustRef *)outTrust fromPKCS12Data:(NSData *)inPKCS12Data {
+    OSStatus securityError = errSecSuccess;
+    //client certificate password
+    NSDictionary*optionsDictionary = [NSDictionary dictionaryWithObject:@"niuniuhaoguanjia"
+                                                                 forKey:(__bridge id)kSecImportExportPassphrase];
+    
+    CFArrayRef items = CFArrayCreate(NULL, 0, 0, NULL);
+    securityError = SecPKCS12Import((__bridge CFDataRef)inPKCS12Data,(__bridge CFDictionaryRef)optionsDictionary,&items);
+    
+    if(securityError == 0) {
+        CFDictionaryRef myIdentityAndTrust =CFArrayGetValueAtIndex(items,0);
+        const void*tempIdentity =NULL;
+        tempIdentity= CFDictionaryGetValue (myIdentityAndTrust,kSecImportItemIdentity);
+        *outIdentity = (SecIdentityRef)tempIdentity;
+        const void*tempTrust =NULL;
+        tempTrust = CFDictionaryGetValue(myIdentityAndTrust,kSecImportItemTrust);
+        *outTrust = (SecTrustRef)tempTrust;
+    } else {
+        NSLog(@"Failedwith error code %d",(int)securityError);
+        return NO;
+    }
+    return YES;
+}
+
+
 
 - (void)URLSession:(NSURLSession *)session
               task:(NSURLSessionTask *)task
